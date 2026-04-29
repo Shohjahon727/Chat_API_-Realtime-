@@ -12,6 +12,6 @@ namespace ChatAPI.Application.Interfaces
 		IGenericRepository<ChatRoom> ChatRooms { get; }
 		IGenericRepository<UserChat> UserChats { get; }
 
-		Task<int> SaveChangesAsync();
+		Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 	}
 }

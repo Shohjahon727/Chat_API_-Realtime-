@@ -29,7 +29,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
 
-// 🔥 Swagger
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -39,7 +39,6 @@ builder.Services.AddSwaggerGen(options =>
 		Version = "v1"
 	});
 
-	// JWT Authorize button
 	options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 	{
 		Description = "Bearer token kiriting. Misol: Bearer abc123",
@@ -48,6 +47,7 @@ builder.Services.AddSwaggerGen(options =>
 		Type = SecuritySchemeType.ApiKey,
 		Scheme = "Bearer"
 	});
+
 	
 });
 
@@ -58,8 +58,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-builder.Services.AddMediatR(cfg =>
-	cfg.RegisterServicesFromAssembly(typeof(ApplicationAssemblyMarker).Assembly));
+// Disambiguate AddMediatR overload by passing the assembly explicitly so the Assembly[] params overload is chosen.
+	builder.Services.AddMediatR(cfg =>
+	cfg.WithEvaluator(type => type.Assembly == typeof(ApplicationAssemblyMarker).Assembly),
+	typeof(ApplicationAssemblyMarker).Assembly);
 
 builder.Services.AddSignalR();
 
@@ -70,14 +72,17 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 builder.Services.AddAuthentication("Bearer")
 	.AddJwtBearer("Bearer", options =>
 	{
+		var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+		var key = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+
 		options.TokenValidationParameters = new TokenValidationParameters
 		{
 			ValidateIssuer = false,
 			ValidateAudience = false,
 			ValidateLifetime = true,
 			ValidateIssuerSigningKey = true,
-			IssuerSigningKey = new SymmetricSecurityKey(
-				Encoding.UTF8.GetBytes("SUPER_SECRET_KEY"))
+			IssuerSigningKey = new SymmetricSecurityKey(key),
+			ClockSkew = TimeSpan.Zero
 		};
 
 		options.Events = new JwtBearerEvents
@@ -98,13 +103,17 @@ builder.Services.AddAuthentication("Bearer")
 		};
 	});
 
+builder.Services.AddAuthorization(options =>
+{
+	options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+});
+
 var app = builder.Build();
 
 // Pipeline
 if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
-
 	app.UseSwagger();
 	app.UseSwaggerUI();
 }
@@ -117,7 +126,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.MapHub<ChatHub>("/chatHub");
 
 app.Run();

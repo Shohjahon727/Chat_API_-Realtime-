@@ -9,6 +9,7 @@ namespace ChatAPI.Application.DTOs
 		public int Id { get; set; }
 		public string Text { get; set; }
 		public int SenderId { get; set; }
+		public string SenderName { get; set; }
 		public DateTime CreatedAt { get; set; }
 	}
 }

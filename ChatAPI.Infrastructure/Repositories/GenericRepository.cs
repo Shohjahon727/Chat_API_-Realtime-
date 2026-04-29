@@ -3,6 +3,7 @@ using ChatAPI.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace ChatAPI.Infrastructure.Repositories
@@ -17,14 +18,15 @@ namespace ChatAPI.Infrastructure.Repositories
 			_context = context;
 			_dbSet = context.Set<T>();
 		}
-		public async Task<T> GetByIdAsync(int id)
-		=> await _dbSet.FindAsync(id);
 
-		public async Task<IEnumerable<T>> GetAllAsync()
-			=> await _dbSet.ToListAsync();
+		public async Task<T> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+			=> await _dbSet.FindAsync(id, cancellationToken);
 
-		public async Task AddAsync(T entity)
-			=> await _dbSet.AddAsync(entity);
+		public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
+			=> await _dbSet.ToListAsync(cancellationToken);
+
+		public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
+			=> await _dbSet.AddAsync(entity, cancellationToken);
 
 		public void Update(T entity)
 			=> _dbSet.Update(entity);
@@ -34,5 +36,11 @@ namespace ChatAPI.Infrastructure.Repositories
 
 		public IQueryable<T> Query()
 			=> _dbSet.AsQueryable();
+
+		public async Task<bool> ExistsAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+			=> await _dbSet.AnyAsync(predicate, cancellationToken);
+
+		public async Task<int> CountAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate = null, CancellationToken cancellationToken = default)
+			=> predicate == null ? await _dbSet.CountAsync(cancellationToken) : await _dbSet.CountAsync(predicate, cancellationToken);
 	}
 }

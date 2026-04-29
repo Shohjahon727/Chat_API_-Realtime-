@@ -7,7 +7,7 @@ using System.Text;
 
 namespace ChatAPI.Infrastructure.Repositories
 {
-	public class UnitOfWork : IUnitOfWork
+	public class UnitOfWork : IUnitOfWork, IDisposable
 	{
 		private readonly AppDbContext _context;
 
@@ -28,5 +28,16 @@ namespace ChatAPI.Infrastructure.Repositories
 
 		public async Task<int> SaveChangesAsync()
 			=> await _context.SaveChangesAsync();
+
+		public void Dispose()
+		{
+			_context.Dispose();
+			GC.SuppressFinalize(this);
+		}
+
+		public Task<int> SaveChangesAsync(CancellationToken cancellationToken)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

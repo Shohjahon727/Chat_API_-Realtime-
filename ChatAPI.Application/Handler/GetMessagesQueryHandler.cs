@@ -5,7 +5,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 namespace ChatAPI.Application.Handler
 {
-	public class GetMessagesQueryHandler : IRequestHandler<GetMessagesQuery, List<MessageDto>>
+	public class GetMessagesQueryHandler : IRequestHandler<GetMessagesQuery, PagedResponseDto<MessageDto>>
 	{
 		private readonly IUnitOfWork _unitOfWork;
 
@@ -14,12 +14,14 @@ namespace ChatAPI.Application.Handler
 			_unitOfWork = unitOfWork;
 		}
 
-		public async Task<List<MessageDto>> Handle(GetMessagesQuery request, CancellationToken cancellationToken)
+		public async Task<PagedResponseDto<MessageDto>> Handle(GetMessagesQuery request, CancellationToken cancellationToken)
 		{
 			var query = _unitOfWork.Messages
 				.Query()
-				.Where(m => m.ChatRoomId == request.ChatRoomId)
+				.Where(m => m.ChatRoomId == request.ChatRoomId && !m.IsDeleted)
 				.OrderByDescending(m => m.CreatedAt);
+
+			var totalCount = await query.CountAsync(cancellationToken);
 
 			var messages = await query
 				.Skip((request.PageNumber - 1) * request.PageSize)
@@ -29,11 +31,18 @@ namespace ChatAPI.Application.Handler
 					Id = m.Id,
 					Text = m.Text,
 					SenderId = m.SenderId,
+					SenderName = m.Sender.UserName,
 					CreatedAt = m.CreatedAt
 				})
-				.ToListAsync();
+				.ToListAsync(cancellationToken);
 
-			return messages;
+			return new PagedResponseDto<MessageDto>
+			{
+				Data = messages,
+				TotalCount = totalCount,
+				PageNumber = request.PageNumber,
+				PageSize = request.PageSize
+			};
 		}
 	}
 }
